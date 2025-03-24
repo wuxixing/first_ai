@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 from neuron import Neuron
 
 class NeuronNetwork:
-    def __init__(self, layer_sizes: List[int], activation: str = "sigmoid") -> None:
+    def __init__(self, layer_sizes: List[int], activation: str = "sigmoid", output_activation: str="linear") -> None:
         """
         初始化神经网络
         
@@ -12,9 +12,12 @@ class NeuronNetwork:
             layer_sizes: 每层神经元数量的列表(包括输入层、隐藏层和输出层)
             activation: 激活函数类型
         """
+        self.output_activation = output_activation  # 为输出层设置专门的激活函数
+
+
         self.layer_sizes = layer_sizes
         self.activation = activation
-        self.layers = []
+        self.layers: List[List[Neuron]] = []
         
         # 构建神经网络的各层
         for i in range(1, len(layer_sizes)):
@@ -22,8 +25,13 @@ class NeuronNetwork:
             # 在当前层中创建指定数量的神经元
             for _ in range(layer_sizes[i]):
                 # 每个神经元接收前一层所有神经元的输出作为输入
-                neuron = Neuron(layer_sizes[i-1], activation)
+                if i == len(layer_sizes) - 1:  # 输出层
+                    neuron = Neuron(layer_sizes[i-1], self.output_activation)
+                else:  # 隐藏层
+                    neuron = Neuron(layer_sizes[i-1], activation)
+
                 layer.append(neuron)
+                                
             self.layers.append(layer)
     
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -95,6 +103,7 @@ class NeuronNetwork:
     
     def train(self, X: NDArray[np.float64], y: NDArray[np.float64], 
               epochs: int = 1000, learning_rate: float = 0.01, 
+              decay_rate: float = 0.0, patience: int = 0, 
               verbose: bool = True) -> List[float]:
         """
         训练神经网络
@@ -103,15 +112,22 @@ class NeuronNetwork:
             X: 训练数据
             y: 目标值
             epochs: 训练轮数
-            learning_rate: 学习率
+            learning_rate: 初始学习率
+            decay_rate: 学习率衰减率
+            patience: 早停耐心值，连续几轮没改善就停止，0表示不启用
             verbose: 是否打印训练进度
             
         返回:
             每个epoch的损失列表
         """
         losses = []
+        best_loss = float('inf')
+        no_improve_count = 0
         
         for epoch in range(epochs):
+            # 学习率衰减
+            learning_rate *= 1.0 / (1.0 + decay_rate * epoch)
+
             total_loss:float = 0.0
             
             # 遍历每个训练样本
@@ -131,6 +147,20 @@ class NeuronNetwork:
             # 计算平均损失
             avg_loss = total_loss / len(X)
             losses.append(avg_loss)
+
+            # 早停检查
+            if patience > 0:
+                if avg_loss < best_loss:
+                    best_loss = avg_loss
+                    no_improve_count = 0
+                else:
+                    no_improve_count += 1
+                    
+                if no_improve_count >= patience:
+                    if verbose:
+                        print(f"Early stopping at epoch {epoch+1}")
+                    break
+
             
             # 打印训练进度
             if verbose and (epoch + 1) % 100 == 0:

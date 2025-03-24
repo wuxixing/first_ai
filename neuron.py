@@ -50,6 +50,12 @@ class Neuron:
         """ReLU函数的导数"""
         return np.where(x > 0, 1, 0)
     
+    def _linear(self, x: np.ndarray) -> NDArray[np.float64]:
+        return x
+    
+    def _linear_derivative(self, x: np.ndarray) -> NDArray[np.float64]:
+        return np.ones_like(x)
+    
     def activate(self, x: np.ndarray) -> NDArray[np.float64]:
         """应用激活函数"""
         if self.activation == "sigmoid":
@@ -58,6 +64,8 @@ class Neuron:
             return self._tanh(x)
         elif self.activation == "relu":
             return self._relu(x)
+        elif self.activation == "linear":
+            return self._linear(x)
         else:
             raise ValueError(f"不支持的激活函数: {self.activation}")
     
@@ -69,6 +77,8 @@ class Neuron:
             return self._tanh_derivative(x)
         elif self.activation == "relu":
             return self._relu_derivative(x)
+        elif self.activation == "linear":
+            return self._linear_derivative(x)
         else:
             raise ValueError(f"不支持的激活函数导数: {self.activation}")
     
